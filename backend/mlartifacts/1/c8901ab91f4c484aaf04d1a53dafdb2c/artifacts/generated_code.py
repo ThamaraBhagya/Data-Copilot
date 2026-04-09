@@ -1,0 +1,1 @@
+result = df.loc[df['Churn'] == 'No', 'MonthlyCharges'].mean()
