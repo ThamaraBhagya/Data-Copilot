@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\DELL\Desktop\DS Projects\data-copilot\backend\executor.py", line 78, in execute_code
+    exec(byte_code, glb, local_vars)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<llm_code>", line 0, in <module>
+NameError: name '_print_' is not defined

@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "C:\Users\DELL\Desktop\DS Projects\data-copilot\backend\executor.py", line 79, in execute_code
+    exec(byte_code, glb, local_vars)
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<llm_code>", line 4, in <module>
+NameError: name '_getitem_' is not defined. Did you mean: '_getiter_'?

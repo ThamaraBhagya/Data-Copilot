@@ -1,0 +1,1 @@
+result = df['Customer ID'].nunique()

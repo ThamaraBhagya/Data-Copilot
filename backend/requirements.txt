@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langchain
+langchain-groq
+pandas
+matplotlib
+seaborn
+mlflow
+python-multipart
+python-dotenv
