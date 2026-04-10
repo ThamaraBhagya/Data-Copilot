@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/cd3dd9bea8a148cba532524c67248a7d/artifacts
+end_time: 1775827704097
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: cd3dd9bea8a148cba532524c67248a7d
+run_name: luminous-bird-327
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775827703358
+status: 3
+tags: []
+user_id: root

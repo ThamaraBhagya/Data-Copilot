@@ -38,12 +38,12 @@ def build_restricted_globals(dataframes: dict) -> dict:
     Multi CSV:   build_restricted_globals({"df_1": df1, "df_2": df2})
     """
     restricted_builtins = safe_builtins.copy()
-    restricted_builtins["__import__"] = _safe_import  # ✅ whitelisted imports only
+    restricted_builtins["__import__"] = _safe_import  # whitelisted imports only
 
     glb = safe_globals.copy()
     glb["__builtins__"] = restricted_builtins
 
-    # ✅ All keys RestrictedPython needs for pandas operations
+    # All keys RestrictedPython needs for pandas operations
     glb["_getitem_"] = default_guarded_getitem          # df['col'], dict['key']
     glb["_getattr_"] = safer_getattr                    # df.sum(), df.groupby()
     glb["_getiter_"] = iter                             # for loops
@@ -52,12 +52,12 @@ def build_restricted_globals(dataframes: dict) -> dict:
     glb["_write_"] = lambda x: x                        # result = ...
     glb["print"] = print                                # forgive accidental prints
 
-    # ✅ Inject standard analysis tools
+    
     glb["pd"] = pd
     glb["plt"] = plt
     glb["sns"] = sns
 
-    # ✅ Inject all DataFrames — single or multiple
+    
     for name, df_obj in dataframes.items():
         glb[name] = df_obj
 
@@ -95,7 +95,7 @@ def execute_code(code: str, df: pd.DataFrame):
         if byte_code is None:
             raise ValueError("RestrictedPython rejected the code at compile time.")
 
-        # ✅ Single df wrapped in dict — uses unified builder
+        
         glb = build_restricted_globals({"df": df})
         local_vars = {}
 
@@ -135,7 +135,7 @@ def execute_code_multi(code: str, dataframes: dict):
         if byte_code is None:
             raise ValueError("RestrictedPython rejected the code at compile time.")
 
-        # ✅ Pass all DataFrames dict directly — same unified builder
+        
         glb = build_restricted_globals(dataframes)
         local_vars = {}
 

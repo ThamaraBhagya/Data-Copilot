@@ -25,7 +25,7 @@ for k, v in defaults.items():
 with st.sidebar:
     st.header("🗄️ Data Copilot", divider="gray")
 
-    # 1. UPLOAD SECTION (Hidden in an expander to save space)
+    # UPLOAD SECTION 
     with st.expander("➕ Upload New CSV", expanded=False):
         uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"], label_visibility="collapsed")
         if uploaded_file:
@@ -39,7 +39,7 @@ with st.sidebar:
                 else:
                     st.error("Upload failed.")
 
-    # 2. DATASET SELECTION CARD
+    # DATASET SELECTION CARD
     with st.container(border=True):
         st.subheader("📂 Load Workspace")
         try:
@@ -91,7 +91,7 @@ with st.sidebar:
     active = st.session_state.session_id
     multi_active = st.session_state.multi_session_ids
 
-    # 3. ACTIVE DATASET CONTROLS
+    # ACTIVE DATASET CONTROLS
     if active or multi_active:
         with st.container(border=True):
             if active:
@@ -115,7 +115,7 @@ with st.sidebar:
                     st.session_state.summary = None
                     st.rerun()
 
-        # 4. HISTORY PANEL
+        # HISTORY PANEL
         if active:
             with st.container(border=True):
                 st.markdown("🕓 **Query History**")
@@ -123,8 +123,8 @@ with st.sidebar:
                     hist_res = requests.get(f"{API_URL}/history/{active}")
                     history_items = hist_res.json()
                     if history_items:
-                        for item in reversed(history_items[-5:]):  # Reduced to 5 to keep UI clean
-                            # vertical_alignment aligns the button nicely with the text
+                        for item in reversed(history_items[-5:]):  
+                            
                             col1, col2 = st.columns([5, 1], vertical_alignment="center") 
                             with col1:
                                 st.caption(item["question"])
@@ -137,7 +137,7 @@ with st.sidebar:
                 except:
                     st.caption("Could not load history.")
 
-        # 5. FAVOURITES PANEL
+        # FAVOURITES PANEL
         if active:
             with st.container(border=True):
                 st.markdown("⭐ **Favourites**")
@@ -207,7 +207,7 @@ if st.session_state.multi_session_ids and not st.session_state.session_id:
             if res.status_code == 200:
                 data = res.json()
 
-                # ✅ Show chart type badge if a chart was selected
+                # Show chart type badge if a chart was selected
                 chart_type = data.get("chart_type", "none")
                 if chart_type and chart_type != "none":
                     chart_labels = {
@@ -224,7 +224,7 @@ if st.session_state.multi_session_ids and not st.session_state.session_id:
                     st.caption(f"Chart type selected: **{label}**")
 
 
-                # ✅ Show chart type badge if a chart was selected
+                # Show chart type badge if a chart was selected
                 chart_type = data.get("chart_type", "none")
                 if chart_type and chart_type != "none":
                     chart_labels = {
@@ -315,7 +315,7 @@ elif st.session_state.session_id:
                 st.image(chat["chart_bytes"], width='stretch')
                 st.download_button("⬇️ Chart", chat["chart_bytes"], f"chart_{i}.png", mime="image/png", key=f"dl_chart_{i}")
 
-            # ✅ Friendly error display
+            # Friendly error display
             if chat.get("friendly_error"):
                 st.error(f"😕 {chat['friendly_error']}")
                 with st.expander("🔧 Technical details"):
@@ -326,7 +326,7 @@ elif st.session_state.session_id:
 
             col1, col2 = st.columns([1, 5])
             with col1:
-                # ✅ Star / favourite button
+                # Star / favourite button
                 if st.button("⭐", key=f"fav_{i}", help="Save to favourites"):
                     requests.post(
                         f"{API_URL}/favourites/{st.session_state.session_id}",
@@ -386,7 +386,7 @@ elif st.session_state.session_id:
                 if data.get("attempts", 1) > 1:
                     st.caption(f"⚡ Fixed after {data['attempts']} attempts")
 
-                # ✅ Star button for new response
+                # Star button for new response
                 if st.button("⭐ Save to favourites", key="fav_new"):
                     requests.post(
                         f"{API_URL}/favourites/{st.session_state.session_id}",
@@ -398,7 +398,7 @@ elif st.session_state.session_id:
                     st.code(data.get("generated_code", ""), language="python")
 
             else:
-                # ✅ Friendly error shown to user
+                # Friendly error shown to user
                 err = res.json()
                 friendly = err.get("friendly_error", "Something went wrong.")
                 technical = err.get("technical_error", "")

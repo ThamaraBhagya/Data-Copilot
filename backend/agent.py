@@ -121,7 +121,7 @@ chart_selector_prompt_tmpl = ChatPromptTemplate.from_messages([("human", CHART_S
 fix_chain = fix_prompt_tmpl | llm
 summary_chain = summary_prompt_tmpl | llm
 error_explain_chain = error_explain_prompt_tmpl | llm
-chart_selector_chain = chart_selector_prompt_tmpl | llm_fast  # ✅ fast model
+chart_selector_chain = chart_selector_prompt_tmpl | llm_fast  
 
 
 # --- Helpers ---

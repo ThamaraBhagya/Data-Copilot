@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/34f519af39944324a47465e85e769e6b/artifacts
+end_time: 1775827657906
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 34f519af39944324a47465e85e769e6b
+run_name: melodic-toad-495
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775827655633
+status: 3
+tags: []
+user_id: root
