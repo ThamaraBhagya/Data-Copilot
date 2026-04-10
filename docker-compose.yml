@@ -1,0 +1,77 @@
+version: "3.8"
+
+services:
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: data-copilot-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - UPLOAD_DIR=/app/data/uploaded_datasets
+      - CHART_PATH=/app/data/output_chart.png
+      - REDIS_URL=redis://redis:6379
+      - DATABASE_URL=sqlite:////app/data/copilot.db
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    volumes:
+      - ./data:/app/data
+    depends_on:
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: data-copilot-frontend
+    ports:
+      - "8501:8501"
+    env_file:
+      - .env
+    environment:
+      - API_URL=http://backend:8000
+    volumes:
+      - ./frontend:/app
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: data-copilot-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: data-copilot-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/mlflow:/mlruns
+    command: >
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri /mlruns
+      --allowed-hosts "*"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: data-copilot-network

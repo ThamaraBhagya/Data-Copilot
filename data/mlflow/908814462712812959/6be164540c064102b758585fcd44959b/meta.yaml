@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/6be164540c064102b758585fcd44959b/artifacts
+end_time: 1775819785511
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 6be164540c064102b758585fcd44959b
+run_name: bouncy-shoat-549
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775819784701
+status: 3
+tags: []
+user_id: root

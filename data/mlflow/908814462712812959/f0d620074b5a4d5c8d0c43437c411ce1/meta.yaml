@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/f0d620074b5a4d5c8d0c43437c411ce1/artifacts
+end_time: 1775810262899
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: f0d620074b5a4d5c8d0c43437c411ce1
+run_name: ambitious-cat-988
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775810261007
+status: 3
+tags: []
+user_id: root

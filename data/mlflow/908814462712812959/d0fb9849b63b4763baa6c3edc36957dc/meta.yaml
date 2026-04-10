@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/d0fb9849b63b4763baa6c3edc36957dc/artifacts
+end_time: 1775820122492
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: d0fb9849b63b4763baa6c3edc36957dc
+run_name: bouncy-goat-994
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775820120278
+status: 3
+tags: []
+user_id: root

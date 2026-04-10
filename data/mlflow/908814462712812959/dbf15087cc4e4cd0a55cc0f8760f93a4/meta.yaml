@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/dbf15087cc4e4cd0a55cc0f8760f93a4/artifacts
+end_time: 1775820248257
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: dbf15087cc4e4cd0a55cc0f8760f93a4
+run_name: learned-auk-970
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775820247453
+status: 3
+tags: []
+user_id: root

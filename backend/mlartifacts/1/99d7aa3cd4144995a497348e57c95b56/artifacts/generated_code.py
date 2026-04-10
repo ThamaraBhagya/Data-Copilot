@@ -1,1 +1,0 @@
-result = df[(df['listed_in'].str.contains('Blue'))].shape[0]

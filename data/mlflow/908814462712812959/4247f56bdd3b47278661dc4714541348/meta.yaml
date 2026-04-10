@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/4247f56bdd3b47278661dc4714541348/artifacts
+end_time: 1775809086681
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 4247f56bdd3b47278661dc4714541348
+run_name: persistent-duck-44
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775809084361
+status: 3
+tags: []
+user_id: root

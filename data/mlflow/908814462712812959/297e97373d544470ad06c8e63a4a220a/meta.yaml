@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/297e97373d544470ad06c8e63a4a220a/artifacts
+end_time: 1775820275957
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 297e97373d544470ad06c8e63a4a220a
+run_name: powerful-snipe-406
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775820275051
+status: 3
+tags: []
+user_id: root

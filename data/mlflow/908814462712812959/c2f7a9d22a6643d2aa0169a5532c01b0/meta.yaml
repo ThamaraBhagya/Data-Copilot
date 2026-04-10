@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/c2f7a9d22a6643d2aa0169a5532c01b0/artifacts
+end_time: 1775820223164
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: c2f7a9d22a6643d2aa0169a5532c01b0
+run_name: salty-eel-307
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775820221690
+status: 3
+tags: []
+user_id: root

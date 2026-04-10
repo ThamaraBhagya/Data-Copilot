@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/21e70b7bbb10476a9df5f51eb9b9f276/artifacts
+end_time: 1775819416992
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 21e70b7bbb10476a9df5f51eb9b9f276
+run_name: clumsy-elk-313
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775819415778
+status: 3
+tags: []
+user_id: root

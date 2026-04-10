@@ -1,1 +1,0 @@
-result = df[df['type'] == 'TV Show'].shape[0]

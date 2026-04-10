@@ -1,11 +1,12 @@
 import streamlit as st
 import requests
 import pandas as pd
+import os
 
-API_URL = "http://localhost:8000"
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
-st.set_page_config(page_title="📊 Data Copilot", page_icon="📊", layout="wide")
-st.title("📊 LLM-Powered Data Analysis Copilot")
+st.set_page_config(page_title="Data Copilot", page_icon="📊", layout="wide")
+st.title("LLM-Powered Data Analysis Copilot")
 
 # --- Session State ---
 defaults = {
@@ -22,145 +23,147 @@ for k, v in defaults.items():
 
 # --- Sidebar ---
 with st.sidebar:
-    st.header("📁 Dataset")
+    st.header("🗄️ Data Copilot", divider="gray")
 
-    # Upload
-    st.subheader("➕ Upload New CSV")
-    uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"])
-    if uploaded_file:
-        with st.spinner("Saving..."):
-            res = requests.post(
-                f"{API_URL}/upload",
-                files={"file": (uploaded_file.name, uploaded_file.getvalue(), "text/csv")}
-            )
-            if res.status_code == 200:
-                st.success("✅ Saved! Select it below to load.")
-            else:
-                st.error("Upload failed.")
-
-    st.divider()
-
-    # Load dataset
-    st.subheader("📂 Load a Dataset")
-    try:
-        res = requests.get(f"{API_URL}/datasets")
-        existing = res.json()
-        if existing:
-            options = {f"{d['session_id']} ({d['rows']} rows)": d["session_id"] for d in existing}
-
-            # ✅ Multi-CSV mode toggle
-            st.session_state.multi_mode = st.toggle("🔗 Multi-CSV Join Mode", value=st.session_state.multi_mode)
-
-            if st.session_state.multi_mode:
-                st.caption("Select 2+ datasets to join and query together.")
-                selected_multi = st.multiselect("Select datasets", list(options.keys()))
-                if len(selected_multi) >= 2:
-                    if st.button("Load selected datasets"):
-                        st.session_state.multi_session_ids = [options[s] for s in selected_multi]
-                        st.session_state.session_id = None
-                        st.session_state.chat_history = []
-                        st.session_state.summary = None
-                        st.success(f"✅ Loaded {len(selected_multi)} datasets for joining.")
-                        st.rerun()
+    # 1. UPLOAD SECTION (Hidden in an expander to save space)
+    with st.expander("➕ Upload New CSV", expanded=False):
+        uploaded_file = st.file_uploader("Choose a CSV file", type=["csv"], label_visibility="collapsed")
+        if uploaded_file:
+            with st.spinner("Saving..."):
+                res = requests.post(
+                    f"{API_URL}/upload",
+                    files={"file": (uploaded_file.name, uploaded_file.getvalue(), "text/csv")}
+                )
+                if res.status_code == 200:
+                    st.success("✅ Saved! Select it below.")
                 else:
-                    st.info("Select at least 2 datasets.")
-            else:
-                selected = st.selectbox("Pick a dataset", ["-- Select --"] + list(options.keys()))
-                if selected != "-- Select --":
-                    picked_id = options[selected]
-                    if picked_id == st.session_state.session_id:
-                        st.info("✅ Already active")
-                    else:
-                        if st.button("Load this dataset"):
-                            with st.spinner("Loading & generating summary..."):
-                                load_res = requests.post(f"{API_URL}/load", data={"session_id": picked_id})
-                                if load_res.status_code == 200:
-                                    load_data = load_res.json()
-                                    st.session_state.session_id = picked_id
-                                    st.session_state.multi_session_ids = []
-                                    st.session_state.chat_history = []
-                                    st.session_state.summary = load_data.get("summary")
-                                    st.rerun()
-                                else:
-                                    st.error("Failed to load.")
-        else:
-            st.info("No datasets yet. Upload one above.")
-    except Exception as e:
-        st.warning(f"Backend unreachable: {e}")
+                    st.error("Upload failed.")
 
-    st.divider()
+    # 2. DATASET SELECTION CARD
+    with st.container(border=True):
+        st.subheader("📂 Load Workspace")
+        try:
+            res = requests.get(f"{API_URL}/datasets")
+            existing = res.json()
+            if existing:
+                options = {f"{d['session_id']} ({d['rows']} rows)": d["session_id"] for d in existing}
+
+                # Multi-CSV mode toggle
+                st.session_state.multi_mode = st.toggle("🔗 Multi-CSV Join Mode", value=st.session_state.multi_mode)
+
+                if st.session_state.multi_mode:
+                    st.caption("Select 2+ datasets to query together.")
+                    selected_multi = st.multiselect("Select datasets", list(options.keys()), label_visibility="collapsed")
+                    
+                    if len(selected_multi) >= 2:
+                        if st.button("Load Workspace", type="primary", use_container_width=True):
+                            st.session_state.multi_session_ids = [options[s] for s in selected_multi]
+                            st.session_state.session_id = None
+                            st.session_state.chat_history = []
+                            st.session_state.summary = None
+                            st.success(f"Loaded {len(selected_multi)} datasets.")
+                            st.rerun()
+                else:
+                    selected = st.selectbox("Pick a dataset", ["-- Select --"] + list(options.keys()), label_visibility="collapsed")
+                    if selected != "-- Select --":
+                        picked_id = options[selected]
+                        if picked_id == st.session_state.session_id:
+                            st.info("🟢 Currently Active")
+                        else:
+                            if st.button("Load Dataset", type="primary", use_container_width=True):
+                                with st.spinner("Loading & summarizing..."):
+                                    load_res = requests.post(f"{API_URL}/load", data={"session_id": picked_id})
+                                    if load_res.status_code == 200:
+                                        load_data = load_res.json()
+                                        st.session_state.session_id = picked_id
+                                        st.session_state.multi_session_ids = []
+                                        st.session_state.chat_history = []
+                                        st.session_state.summary = load_data.get("summary")
+                                        st.rerun()
+                                    else:
+                                        st.error("Failed to load.")
+            else:
+                st.info("No datasets yet. Upload one above.")
+        except Exception as e:
+            st.error(f"Backend offline: {e}")
 
     # Active dataset actions
     active = st.session_state.session_id
     multi_active = st.session_state.multi_session_ids
 
+    # 3. ACTIVE DATASET CONTROLS
     if active or multi_active:
-        if active:
-            st.markdown(f"**Active:** `{active}`")
-        else:
-            st.markdown(f"**Active (Multi):** {len(multi_active)} datasets")
+        with st.container(border=True):
+            if active:
+                st.markdown(f"**🟢 Active:** `{active}`")
+            else:
+                st.markdown(f"**🟢 Active (Multi):** `{len(multi_active)} datasets`")
 
-        if active:
-            if st.button("🧹 Clear chat memory", type="secondary"):
-                requests.delete(f"{API_URL}/history/{active}")
-                st.session_state.chat_history = []
-                st.success("Memory cleared!")
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🧹 Clear Chat", use_container_width=True):
+                    if active:
+                        requests.delete(f"{API_URL}/history/{active}")
+                    st.session_state.chat_history = []
+                    st.rerun()
+            with col2:
+                if st.button("🗑️ Delete", use_container_width=True):
+                    if active:
+                        requests.delete(f"{API_URL}/datasets/{active}")
+                    st.session_state.session_id = None
+                    st.session_state.chat_history = []
+                    st.session_state.summary = None
+                    st.rerun()
 
-            if st.button("🗑️ Delete active dataset", type="secondary"):
-                requests.delete(f"{API_URL}/datasets/{active}")
-                st.session_state.session_id = None
-                st.session_state.chat_history = []
-                st.session_state.summary = None
-                st.rerun()
-
-        # ✅ Query History Panel
+        # 4. HISTORY PANEL
         if active:
-            st.divider()
-            st.subheader("🕓 Query History")
-            try:
-                hist_res = requests.get(f"{API_URL}/history/{active}")
-                history_items = hist_res.json()
-                if history_items:
-                    for item in reversed(history_items[-10:]):  # Show last 10
-                        col1, col2 = st.columns([4, 1])
-                        with col1:
-                            st.caption(item["question"])
-                        with col2:
-                            if st.button("▶", key=f"replay_{item['question'][:20]}"):
-                                st.session_state.prefill_question = item["question"]
-                                st.rerun()
-                else:
-                    st.caption("No history yet.")
-            except:
-                st.caption("Could not load history.")
+            with st.container(border=True):
+                st.markdown("🕓 **Query History**")
+                try:
+                    hist_res = requests.get(f"{API_URL}/history/{active}")
+                    history_items = hist_res.json()
+                    if history_items:
+                        for item in reversed(history_items[-5:]):  # Reduced to 5 to keep UI clean
+                            # vertical_alignment aligns the button nicely with the text
+                            col1, col2 = st.columns([5, 1], vertical_alignment="center") 
+                            with col1:
+                                st.caption(item["question"])
+                            with col2:
+                                if st.button("▶", key=f"replay_{item['question'][:20]}", help="Rerun query"):
+                                    st.session_state.prefill_question = item["question"]
+                                    st.rerun()
+                    else:
+                        st.caption("No history yet.")
+                except:
+                    st.caption("Could not load history.")
 
-        # ✅ Favourites Panel
+        # 5. FAVOURITES PANEL
         if active:
-            st.divider()
-            st.subheader("⭐ Favourites")
-            try:
-                fav_res = requests.get(f"{API_URL}/favourites/{active}")
-                favs = fav_res.json()
-                if favs:
-                    for fav in favs:
-                        col1, col2, col3 = st.columns([4, 1, 1])
-                        with col1:
-                            st.caption(fav["question"])
-                        with col2:
-                            if st.button("▶", key=f"fav_run_{fav['question'][:20]}"):
-                                st.session_state.prefill_question = fav["question"]
-                                st.rerun()
-                        with col3:
-                            if st.button("🗑", key=f"fav_del_{fav['question'][:20]}"):
-                                requests.delete(
-                                    f"{API_URL}/favourites/{active}",
-                                    data={"question": fav["question"]}
-                                )
-                                st.rerun()
-                else:
-                    st.caption("No favourites yet. Star a response below!")
-            except:
-                st.caption("Could not load favourites.")
+            with st.container(border=True):
+                st.markdown("⭐ **Favourites**")
+                try:
+                    fav_res = requests.get(f"{API_URL}/favourites/{active}")
+                    favs = fav_res.json()
+                    if favs:
+                        for fav in favs:
+                            col1, col2, col3 = st.columns([5, 1, 1], vertical_alignment="center")
+                            with col1:
+                                st.caption(fav["question"])
+                            with col2:
+                                if st.button("▶", key=f"fav_run_{fav['question'][:20]}", help="Rerun query"):
+                                    st.session_state.prefill_question = fav["question"]
+                                    st.rerun()
+                            with col3:
+                                if st.button("✖", key=f"fav_del_{fav['question'][:20]}", help="Remove favourite"):
+                                    requests.delete(
+                                        f"{API_URL}/favourites/{active}",
+                                        data={"question": fav["question"]}
+                                    )
+                                    st.rerun()
+                    else:
+                        st.caption("No favourites yet.")
+                except:
+                    st.caption("Could not load favourites.")
 
 # --- Main Area ---
 

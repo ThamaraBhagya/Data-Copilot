@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/3dfd6c786df64efeb4530a6e96433c0f/artifacts
+end_time: 1775822141458
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 3dfd6c786df64efeb4530a6e96433c0f
+run_name: upbeat-dog-357
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775822140377
+status: 3
+tags: []
+user_id: root

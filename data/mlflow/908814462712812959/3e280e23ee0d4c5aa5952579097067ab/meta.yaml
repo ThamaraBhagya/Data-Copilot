@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/3e280e23ee0d4c5aa5952579097067ab/artifacts
+end_time: 1775819697916
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 3e280e23ee0d4c5aa5952579097067ab
+run_name: adaptable-deer-583
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775819695368
+status: 3
+tags: []
+user_id: root

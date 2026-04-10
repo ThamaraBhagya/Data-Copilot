@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/0ae708087e0b4ae69f0eef810704c1ec/artifacts
+end_time: 1775823680820
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 0ae708087e0b4ae69f0eef810704c1ec
+run_name: amusing-calf-207
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775823680159
+status: 3
+tags: []
+user_id: root

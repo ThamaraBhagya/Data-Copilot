@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/201cddb6bb9c44929bc54095f7905ebf/artifacts
+end_time: 1775821991348
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 201cddb6bb9c44929bc54095f7905ebf
+run_name: welcoming-cow-957
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775821989737
+status: 3
+tags: []
+user_id: root

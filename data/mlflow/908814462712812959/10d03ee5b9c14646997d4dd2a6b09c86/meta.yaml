@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/10d03ee5b9c14646997d4dd2a6b09c86/artifacts
+end_time: 1775809135870
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: 10d03ee5b9c14646997d4dd2a6b09c86
+run_name: resilient-donkey-94
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775809133410
+status: 3
+tags: []
+user_id: root

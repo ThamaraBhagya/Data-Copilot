@@ -1,0 +1,8 @@
+artifact_location: mlflow-artifacts:/908814462712812959
+creation_time: 1775808166735
+experiment_id: '908814462712812959'
+last_update_time: 1775808166735
+lifecycle_stage: active
+name: data-copilot
+trace_location: null
+workspace: default

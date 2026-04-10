@@ -1,1 +1,0 @@
-result = "No previous questions were asked in this session, so there is no error to explain."

@@ -8,11 +8,18 @@ import hashlib
 import json
 import tempfile
 import math
+import uuid
 from datetime import datetime
 
 from agent import generate_code, generate_code_multi, fix_code, generate_summary, explain_error
-from executor import execute_code
+from executor import execute_code, execute_code_multi
 from mlflow_logger import log_query
+from database import init_db, SessionLocal, QueryHistory, Favourite, DatasetMeta
+from cache import (
+    cache_dataframe, get_cached_dataframe, invalidate_cache,
+    cache_schema, get_cached_schema,
+    cache_summary, get_cached_summary
+)
 
 app = FastAPI(title="Data Copilot API")
 
@@ -24,19 +31,23 @@ app.add_middleware(
 )
 
 MAX_RETRIES = 3
-UPLOAD_DIR = "uploaded_datasets"
-HISTORY_DIR = "query_history"
-FAVOURITES_DIR = "favourites"
+UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploaded_datasets")
+CHART_PATH = os.getenv("CHART_PATH", "output_chart.png")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(HISTORY_DIR, exist_ok=True)
-os.makedirs(FAVOURITES_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(CHART_PATH) if os.path.dirname(CHART_PATH) else ".", exist_ok=True)
+
+
+# --- Startup ---
+
+@app.on_event("startup")
+def startup():
+    init_db()
 
 
 # --- Helpers ---
 
 def sanitize_for_json(obj):
-    """Recursively replace nan/inf with None for JSON safety."""
     if isinstance(obj, float):
         if math.isnan(obj) or math.isinf(obj):
             return None
@@ -52,84 +63,179 @@ def get_dataset_path(session_id: str) -> str:
     return os.path.join(UPLOAD_DIR, f"{session_id}.csv")
 
 
-def get_history_path(session_id: str) -> str:
-    return os.path.join(HISTORY_DIR, f"{session_id}.json")
-
-
-def get_favourites_path(session_id: str) -> str:
-    return os.path.join(FAVOURITES_DIR, f"{session_id}.json")
-
-
-def load_dataframe(session_id: str) -> pd.DataFrame | None:
-    path = get_dataset_path(session_id)
-    if os.path.exists(path):
-        return pd.read_csv(path)
-    return None
-
-
 def generate_session_id(filename: str, content: bytes) -> str:
     file_hash = hashlib.md5(content).hexdigest()[:8]
     clean_name = filename.replace(".csv", "").replace(" ", "_")
     return f"{clean_name}_{file_hash}"
 
 
-def load_query_history(session_id: str) -> list:
-    path = get_history_path(session_id)
+def load_dataframe(session_id: str) -> pd.DataFrame | None:
+    # 1. Redis cache
+    df = get_cached_dataframe(session_id)
+    if df is not None:
+        return df
+    # 2. Disk fallback
+    path = get_dataset_path(session_id)
     if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return []
+        df = pd.read_csv(path)
+        cache_dataframe(session_id, df)
+        return df
+    return None
+
+
+def get_schema(session_id: str, df: pd.DataFrame) -> str:
+    schema = get_cached_schema(session_id)
+    if schema is None:
+        schema = str(df.dtypes) + f"\n\nSample:\n{df.head(3).to_string()}"
+        cache_schema(session_id, schema)
+    return schema
+
+
+# --- SQLite: History ---
+
+def load_query_history(session_id: str) -> list:
+    db = SessionLocal()
+    try:
+        rows = db.query(QueryHistory)\
+                 .filter(QueryHistory.session_id == session_id)\
+                 .order_by(QueryHistory.timestamp)\
+                 .all()
+        return [{"question": r.question, "code": r.code} for r in rows]
+    finally:
+        db.close()
 
 
 def save_query_history(session_id: str, question: str, code: str):
-    path = get_history_path(session_id)
-    history = load_query_history(session_id)
-    history.append({
-        "question": question,
-        "code": code,
-        "timestamp": datetime.now().isoformat()
-    })
-    with open(path, "w") as f:
-        json.dump(history, f)
+    db = SessionLocal()
+    try:
+        db.add(QueryHistory(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            question=question,
+            code=code
+        ))
+        db.commit()
+    finally:
+        db.close()
 
+
+def clear_query_history(session_id: str):
+    db = SessionLocal()
+    try:
+        db.query(QueryHistory)\
+          .filter(QueryHistory.session_id == session_id)\
+          .delete()
+        db.commit()
+    finally:
+        db.close()
+
+
+# --- SQLite: Favourites ---
 
 def load_favourites(session_id: str) -> list:
-    path = get_favourites_path(session_id)
-    if os.path.exists(path):
-        with open(path) as f:
-            return json.load(f)
-    return []
+    db = SessionLocal()
+    try:
+        rows = db.query(Favourite)\
+                 .filter(Favourite.session_id == session_id)\
+                 .order_by(Favourite.saved_at)\
+                 .all()
+        return [{"question": r.question, "code": r.code} for r in rows]
+    finally:
+        db.close()
 
 
-def save_favourite(session_id: str, question: str, code: str):
-    path = get_favourites_path(session_id)
-    favs = load_favourites(session_id)
-    # Avoid duplicates
-    if any(f["question"] == question for f in favs):
-        return False
-    favs.append({
-        "question": question,
-        "code": code,
-        "saved_at": datetime.now().isoformat()
-    })
-    with open(path, "w") as f:
-        json.dump(favs, f)
-    return True
+def save_favourite(session_id: str, question: str, code: str) -> bool:
+    db = SessionLocal()
+    try:
+        exists = db.query(Favourite)\
+                   .filter(
+                       Favourite.session_id == session_id,
+                       Favourite.question == question
+                   ).first()
+        if exists:
+            return False
+        db.add(Favourite(
+            id=str(uuid.uuid4()),
+            session_id=session_id,
+            question=question,
+            code=code
+        ))
+        db.commit()
+        return True
+    finally:
+        db.close()
 
 
 def remove_favourite(session_id: str, question: str):
-    path = get_favourites_path(session_id)
-    favs = load_favourites(session_id)
-    favs = [f for f in favs if f["question"] != question]
-    with open(path, "w") as f:
-        json.dump(favs, f)
+    db = SessionLocal()
+    try:
+        db.query(Favourite)\
+          .filter(
+              Favourite.session_id == session_id,
+              Favourite.question == question
+          ).delete()
+        db.commit()
+    finally:
+        db.close()
+
+
+# --- SQLite: Dataset Meta ---
+
+def save_dataset_meta(session_id: str, filename: str, rows: int, columns: list, size_kb: float):
+    db = SessionLocal()
+    try:
+        exists = db.query(DatasetMeta)\
+                   .filter(DatasetMeta.session_id == session_id)\
+                   .first()
+        if not exists:
+            db.add(DatasetMeta(
+                session_id=session_id,
+                filename=filename,
+                rows=rows,
+                columns_json=json.dumps(columns),
+                size_kb=str(size_kb)
+            ))
+            db.commit()
+    finally:
+        db.close()
+
+
+def list_datasets_from_db() -> list:
+    db = SessionLocal()
+    try:
+        rows = db.query(DatasetMeta)\
+                 .order_by(DatasetMeta.uploaded_at.desc())\
+                 .all()
+        return [
+            {
+                "session_id": r.session_id,
+                "filename": r.filename,
+                "rows": r.rows,
+                "columns": json.loads(r.columns_json),
+                "size_kb": r.size_kb,
+                "uploaded_at": r.uploaded_at.isoformat() if r.uploaded_at else ""
+            }
+            for r in rows
+        ]
+    finally:
+        db.close()
+
+
+def delete_dataset_meta(session_id: str):
+    db = SessionLocal()
+    try:
+        db.query(DatasetMeta).filter(DatasetMeta.session_id == session_id).delete()
+        db.query(QueryHistory).filter(QueryHistory.session_id == session_id).delete()
+        db.query(Favourite).filter(Favourite.session_id == session_id).delete()
+        db.commit()
+    finally:
+        db.close()
 
 
 # --- Routes ---
 
 @app.post("/upload")
 async def upload_csv(file: UploadFile = File(...)):
-    """Save CSV to disk only. Does not auto-load."""
     contents = await file.read()
     session_id = generate_session_id(file.filename, contents)
     path = get_dataset_path(session_id)
@@ -142,8 +248,20 @@ async def upload_csv(file: UploadFile = File(...)):
         print(f"[Upload] Already exists: {path}")
 
     df = pd.read_csv(io.StringIO(contents.decode("utf-8")))
-    preview = sanitize_for_json(df.head(5).to_dict(orient="records"))
 
+    # Save meta to SQLite
+    save_dataset_meta(
+        session_id=session_id,
+        filename=file.filename,
+        rows=df.shape[0],
+        columns=list(df.columns),
+        size_kb=round(os.path.getsize(path) / 1024, 2)
+    )
+
+    # Pre-warm Redis
+    cache_dataframe(session_id, df)
+
+    preview = sanitize_for_json(df.head(5).to_dict(orient="records"))
     return {
         "session_id": session_id,
         "columns": list(df.columns),
@@ -154,15 +272,18 @@ async def upload_csv(file: UploadFile = File(...)):
 
 @app.post("/load")
 async def load_dataset(session_id: str = Form(...)):
-    """Load a dataset and generate its summary."""
     df = load_dataframe(session_id)
     if df is None:
         return JSONResponse(status_code=404, content={"error": "Dataset not found."})
 
-    schema = str(df.dtypes) + f"\n\nFirst 5 rows:\n{df.head(5).to_string()}"
-    summary = generate_summary(schema)
-    preview = sanitize_for_json(df.head(5).to_dict(orient="records"))
+    # Check summary cache first
+    summary = get_cached_summary(session_id)
+    if summary is None:
+        schema = get_schema(session_id, df)
+        summary = generate_summary(schema)
+        cache_summary(session_id, summary)
 
+    preview = sanitize_for_json(df.head(5).to_dict(orient="records"))
     return {
         "session_id": session_id,
         "columns": list(df.columns),
@@ -171,15 +292,14 @@ async def load_dataset(session_id: str = Form(...)):
         "summary": summary
     }
 
+
 @app.post("/query")
 async def query(session_id: str = Form(...), question: str = Form(...)):
     df = load_dataframe(session_id)
     if df is None:
         return JSONResponse(status_code=404, content={"error": "Dataset not found."})
 
-    # ✅ Use cached schema — avoids recomputing on every query
-    from agent import get_schema
-    schema = get_schema(df, session_id)
+    schema = get_schema(session_id, df)
     history = load_query_history(session_id)
     columns = list(df.columns)
 
@@ -202,7 +322,13 @@ async def query(session_id: str = Form(...), question: str = Form(...)):
     if not error:
         save_query_history(session_id, question, code)
 
-    log_query(question=question, generated_code=code, success=(error is None), error=error, attempts=attempts)
+    log_query(
+        question=question,
+        generated_code=code,
+        success=(error is None),
+        error=error,
+        attempts=attempts
+    )
 
     if error:
         friendly = explain_error(question=question, error=error)
@@ -238,7 +364,6 @@ async def query_multi(session_ids: str = Form(...), question: str = Form(...)):
         schemas += f"\n{var_name} → '{sid}'\nColumns:\n{str(df.dtypes)}\nSample:\n{df.head(2).to_string()}\n"
         all_columns.extend(list(df.columns))
 
-    # ✅ generate_code_multi now returns (code, chart_type)
     code, chart_type = generate_code_multi(
         schemas=schemas,
         question=question,
@@ -249,7 +374,6 @@ async def query_multi(session_ids: str = Form(...), question: str = Form(...)):
 
     attempts = 1
     while error and attempts < MAX_RETRIES:
-        print(f"[Multi Retry {attempts}]")
         code = fix_code(schema=schemas, question=question, bad_code=code, error=error)
         result, chart_path, error = execute_code_multi(code, dataframes)
         attempts += 1
@@ -267,12 +391,11 @@ async def query_multi(session_ids: str = Form(...), question: str = Form(...)):
         "generated_code": code,
         "result": result,
         "has_chart": chart_path is not None,
-        "chart_type": chart_type,   # ✅ send to frontend
+        "chart_type": chart_type,
         "attempts": attempts
     })
 
 
-# ✅ NEW: Favourites endpoints
 @app.post("/favourites/{session_id}")
 async def add_favourite(session_id: str, question: str = Form(...), code: str = Form(...)):
     added = save_favourite(session_id, question, code)
@@ -299,28 +422,13 @@ def get_history(session_id: str):
 
 @app.delete("/history/{session_id}")
 def clear_history(session_id: str):
-    path = get_history_path(session_id)
-    if os.path.exists(path):
-        os.remove(path)
+    clear_query_history(session_id)
     return {"message": "History cleared."}
 
 
 @app.get("/datasets")
 def list_datasets():
-    datasets = []
-    for f in os.listdir(UPLOAD_DIR):
-        if not f.endswith(".csv"):
-            continue
-        path = os.path.join(UPLOAD_DIR, f)
-        df = pd.read_csv(path)
-        datasets.append({
-            "session_id": f.replace(".csv", ""),
-            "filename": f,
-            "rows": df.shape[0],
-            "columns": list(df.columns),
-            "size_kb": round(os.path.getsize(path) / 1024, 2)
-        })
-    return datasets
+    return list_datasets_from_db()
 
 
 @app.delete("/datasets/{session_id}")
@@ -328,11 +436,9 @@ def delete_dataset(session_id: str):
     path = get_dataset_path(session_id)
     if os.path.exists(path):
         os.remove(path)
-        for p in [get_history_path(session_id), get_favourites_path(session_id)]:
-            if os.path.exists(p):
-                os.remove(p)
-        return {"message": f"Dataset '{session_id}' deleted."}
-    return JSONResponse(status_code=404, content={"error": "Dataset not found."})
+    invalidate_cache(session_id)
+    delete_dataset_meta(session_id)
+    return {"message": f"Dataset '{session_id}' deleted."}
 
 
 @app.post("/export/csv")
@@ -340,9 +446,14 @@ async def export_csv(session_id: str = Form(...), question: str = Form(...)):
     df = load_dataframe(session_id)
     if df is None:
         return JSONResponse(status_code=404, content={"error": "Dataset not found."})
-    schema = str(df.dtypes)
+    schema = get_schema(session_id, df)
     history = load_query_history(session_id)
-    code = generate_code(schema=schema, question=question, history=history)
+    code, _ = await generate_code(
+        schema=schema,
+        question=question,
+        columns=list(df.columns),
+        history=history
+    )
     result, _, error = execute_code(code, df.copy())
     if error or not result:
         return JSONResponse(status_code=500, content={"error": "Could not generate export."})
@@ -354,70 +465,21 @@ async def export_csv(session_id: str = Form(...), question: str = Form(...)):
 
 @app.get("/chart")
 def get_chart():
-    return FileResponse("output_chart.png", media_type="image/png")
+    return FileResponse(CHART_PATH, media_type="image/png")
 
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "redis": REDIS_AVAILABLE if True else "fallback"
+    }
 
 
-# --- Multi-CSV executor helper ---
-def execute_code_multi(code: str, dataframes: dict):
-    """Execute code with multiple DataFrames injected."""
-    import matplotlib
-    matplotlib.use('Agg')
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-    import traceback
 
-    CHART_PATH = "output_chart.png"
-    if os.path.exists(CHART_PATH):
-        os.remove(CHART_PATH)
 
-    result = None
-    chart_path = None
-    error = None
-
-    try:
-        from RestrictedPython import compile_restricted
-        from RestrictedPython.Guards import safe_builtins, safer_getattr, guarded_iter_unpack_sequence, guarded_unpack_sequence
-        from RestrictedPython.Eval import default_guarded_getitem
-
-        byte_code = compile_restricted(code, filename="<llm_multi>", mode="exec")
-
-        glb = {
-            "__builtins__": safe_builtins,
-            "_getitem_": default_guarded_getitem,
-            "_getattr_": safer_getattr,
-            "_getiter_": iter,
-            "_iter_unpack_sequence_": guarded_iter_unpack_sequence,
-            "_unpack_sequence_": guarded_unpack_sequence,
-            "_write_": lambda x: x,
-            "print": print,
-            "pd": pd,
-            "plt": plt,
-            "sns": sns,
-        }
-
-        # ✅ Inject all DataFrames
-        local_vars = {**dataframes}
-
-        exec(byte_code, glb, local_vars)
-
-        if "result" in local_vars:
-            result = local_vars["result"]
-            if isinstance(result, pd.DataFrame):
-                result = result.to_dict(orient="records")
-            elif isinstance(result, pd.Series):
-                result = result.to_dict()
-            else:
-                result = str(result)
-
-        if os.path.exists(CHART_PATH):
-            chart_path = CHART_PATH
-
-    except Exception:
-        error = traceback.format_exc()
-
-    return result, chart_path, error
+# import for health check
+try:
+    from cache import REDIS_AVAILABLE
+except:
+    REDIS_AVAILABLE = False

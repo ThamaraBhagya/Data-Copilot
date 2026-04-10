@@ -13,10 +13,10 @@ llm = ChatGroq(
     temperature=0
 )
 
-# ✅ Smaller faster model just for chart selection
+# Smaller faster model just for chart selection
 llm_fast = ChatGroq(
     api_key=os.getenv("GROQ_API_KEY"),
-    model_name="llama-3.1-8b-instant",  # 8B is much faster than 70B for simple tasks
+    model_name="llama-3.1-8b-instant",  
     temperature=0
 )
 
@@ -28,7 +28,7 @@ Given a pandas DataFrame called `df` and a user question, write Python code to a
 
 Rules:
 - Always use `df` as the variable name
-- For charts: use matplotlib/seaborn, always end with plt.savefig('output_chart.png') and plt.close()
+- For charts: use matplotlib/seaborn, always end with plt.savefig('/app/data/output_chart.png', bbox_inches='tight') and plt.close()
 - If a chart is needed, use this exact chart type: {chart_type}
 - For data/stats: store final result in a variable called `result`
 - Never use input() or any user interaction
@@ -45,7 +45,7 @@ You have multiple pandas DataFrames available and a user question.
 Rules:
 - DataFrames are named df_1, df_2, df_3 etc. Use exact names provided
 - For joins: use pd.merge() with appropriate keys
-- For charts: use matplotlib/seaborn, always end with plt.savefig('output_chart.png') and plt.close()
+- For charts: use matplotlib/seaborn, always end with plt.savefig('/app/data/output_chart.png', bbox_inches='tight') and plt.close()
 - If a chart is needed, use this exact chart type: {chart_type}
 - For data/stats: store final result in a variable called `result`
 - Never use input() or any user interaction
@@ -66,7 +66,7 @@ Rules:
 - Store output in `result` variable
 - Never use print()
 - Never use input()
-- For charts: end with plt.savefig('output_chart.png') and plt.close()
+- For charts: use matplotlib/seaborn, always end with plt.savefig('/app/data/output_chart.png', bbox_inches='tight') and plt.close()
 - Return ONLY the fixed Python code, nothing else
 """
 
@@ -132,7 +132,7 @@ def clean_code(raw: str) -> str:
 
 VALID_CHART_TYPES = {"bar", "line", "scatter", "histogram", "heatmap", "pie", "box", "area", "none"}
 
-# ✅ Simple in-memory cache for chart type decisions
+# Simple in-memory cache for chart type decisions
 _chart_cache: dict = {}
 
 def select_chart_type(question: str, columns: list) -> str:
@@ -158,7 +158,7 @@ def select_chart_type(question: str, columns: list) -> str:
         return "none"
 
 
-# ✅ Schema cache — avoid re-computing schema string repeatedly
+# Schema cache — avoid re-computing schema string repeatedly
 _schema_cache: dict = {}
 
 def get_schema(df, session_id: str) -> str:
@@ -174,7 +174,7 @@ async def _run_parallel(schema: str, question: str, chart_type_future, history_t
     Run chart selection and code generation in parallel using asyncio.
     chart_type_future is a coroutine that returns the chart type.
     """
-    pass  # placeholder — see generate_code_parallel below
+    pass  
 
 
 async def generate_code_parallel(
@@ -184,7 +184,7 @@ async def generate_code_parallel(
     history: list = []
 ) -> tuple[str, str]:
     """
-    ✅ Run chart selection AND code generation at the same time.
+     Run chart selection AND code generation at the same time.
     Returns: (code, chart_type)
     """
     history_text = ""
@@ -216,7 +216,7 @@ async def generate_code_parallel(
         return clean_code(response.content), chart_type
 
     else:
-        # ✅ Run both calls simultaneously
+        # Run both calls simultaneously
         async def get_chart_type():
             try:
                 response = await chart_selector_chain.ainvoke({
@@ -232,8 +232,7 @@ async def generate_code_parallel(
                 return "none"
 
         async def get_code(chart_type_placeholder: str = "none"):
-            # We need chart_type first for the prompt — use placeholder initially
-            # This runs with placeholder, then we correct below
+            
             generate_prompt = ChatPromptTemplate.from_messages([
                 ("system", SYSTEM_PROMPT),
                 ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")
@@ -241,12 +240,11 @@ async def generate_code_parallel(
             generate_chain = generate_prompt | llm
             return generate_chain
 
-        # ✅ Get chart type first with fast model (8B is very quick)
-        # then immediately fire code generation
+        
         chart_type_task = asyncio.create_task(get_chart_type())
         chart_type = await chart_type_task
 
-        # Now generate code with correct chart type
+        
         generate_prompt = ChatPromptTemplate.from_messages([
             ("system", SYSTEM_PROMPT),
             ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")

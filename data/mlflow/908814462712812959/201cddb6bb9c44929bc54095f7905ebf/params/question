@@ -1,0 +1,1 @@
+Plot a scatter plot of all records using 'longitude' as the x-axis and 'latitude' as the y-axis. Use a very small point size and set alpha to 0.1 so we can see the density of the city."

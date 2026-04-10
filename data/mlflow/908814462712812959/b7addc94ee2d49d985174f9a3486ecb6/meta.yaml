@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/b7addc94ee2d49d985174f9a3486ecb6/artifacts
+end_time: 1775820201146
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: b7addc94ee2d49d985174f9a3486ecb6
+run_name: treasured-stoat-915
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775820200294
+status: 3
+tags: []
+user_id: root
