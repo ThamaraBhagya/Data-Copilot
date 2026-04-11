@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/b4da39e58dad4217bf138b3852055a27/artifacts
+end_time: 1775908140808
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: b4da39e58dad4217bf138b3852055a27
+run_name: abundant-flea-269
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775908138107
+status: 3
+tags: []
+user_id: root
