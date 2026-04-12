@@ -13,7 +13,7 @@ try:
     r = redis.from_url(REDIS_URL, decode_responses=False)
     r.ping()
     REDIS_AVAILABLE = True
-    print("[Cache] Redis connected ✅")
+    print("[Cache] Redis connected ")
 except Exception as e:
     REDIS_AVAILABLE = False
     print(f"[Cache] Redis unavailable, using memory fallback. Reason: {e}")

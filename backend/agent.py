@@ -169,22 +169,14 @@ def get_schema(df, session_id: str) -> str:
     return _schema_cache[session_id]
 
 
-async def _run_parallel(schema: str, question: str, chart_type_future, history_text: str):
-    """
-    Run chart selection and code generation in parallel using asyncio.
-    chart_type_future is a coroutine that returns the chart type.
-    """
-    pass  
-
-
-async def generate_code_parallel(
+async def generate_code_pipeline(
     schema: str,
     question: str,
     columns: list = [],
     history: list = []
 ) -> tuple[str, str]:
     """
-     Run chart selection AND code generation at the same time.
+    Runs chart selection and code generation sequentially.
     Returns: (code, chart_type)
     """
     history_text = ""
@@ -192,73 +184,43 @@ async def generate_code_parallel(
         for h in history[-3:]:
             history_text += f"Q: {h['question']}\nCode: {h['code']}\n\n"
 
-    # Check chart cache first — if hit, we only need one LLM call
+    # Check chart cache first 
     cache_key = question.strip().lower()
     cached_chart = _chart_cache.get(cache_key)
 
     if cached_chart:
-        # Chart type already known — just generate code
         chart_type = cached_chart
         print(f"[ChartSelector] Cache hit: {chart_type}")
-
-        generate_prompt = ChatPromptTemplate.from_messages([
-            ("system", SYSTEM_PROMPT),
-            ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")
-        ])
-        generate_chain = generate_prompt | llm
-
-        response = await generate_chain.ainvoke({
-            "schema": schema,
-            "question": question,
-            "history": history_text or "None",
-            "chart_type": chart_type
-        })
-        return clean_code(response.content), chart_type
-
     else:
-        # Run both calls simultaneously
-        async def get_chart_type():
-            try:
-                response = await chart_selector_chain.ainvoke({
-                    "question": question,
-                    "columns": ", ".join(columns)
-                })
-                ct = response.content.strip().lower()
-                ct = ct if ct in VALID_CHART_TYPES else "none"
-                _chart_cache[cache_key] = ct
-                print(f"[ChartSelector] Selected: {ct}")
-                return ct
-            except:
-                return "none"
+        # STEP 1: Await the fast chart model 
+        try:
+            response = await chart_selector_chain.ainvoke({
+                "question": question,
+                "columns": ", ".join(columns)
+            })
+            ct = response.content.strip().lower()
+            chart_type = ct if ct in VALID_CHART_TYPES else "none"
+            _chart_cache[cache_key] = chart_type
+            print(f"[ChartSelector] Selected: {chart_type}")
+        except Exception as e:
+            print(f"[ChartSelector] Error: {e}")
+            chart_type = "none"
 
-        async def get_code(chart_type_placeholder: str = "none"):
-            
-            generate_prompt = ChatPromptTemplate.from_messages([
-                ("system", SYSTEM_PROMPT),
-                ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")
-            ])
-            generate_chain = generate_prompt | llm
-            return generate_chain
+    # STEP 2: Pass the chart type to the heavy code generator
+    generate_prompt = ChatPromptTemplate.from_messages([
+        ("system", SYSTEM_PROMPT),
+        ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")
+    ])
+    generate_chain = generate_prompt | llm
 
-        
-        chart_type_task = asyncio.create_task(get_chart_type())
-        chart_type = await chart_type_task
+    response = await generate_chain.ainvoke({
+        "schema": schema,
+        "question": question,
+        "history": history_text or "None",
+        "chart_type": chart_type
+    })
 
-        
-        generate_prompt = ChatPromptTemplate.from_messages([
-            ("system", SYSTEM_PROMPT),
-            ("human", "DataFrame columns and dtypes:\n{schema}\n\nPrevious questions:\n{history}\n\nUser question: {question}")
-        ])
-        generate_chain = generate_prompt | llm
-
-        response = await generate_chain.ainvoke({
-            "schema": schema,
-            "question": question,
-            "history": history_text or "None",
-            "chart_type": chart_type
-        })
-
-        return clean_code(response.content), chart_type
+    return clean_code(response.content), chart_type
 
 
 async def generate_code(
@@ -267,9 +229,8 @@ async def generate_code(
     columns: list = [],
     history: list = []
 ) -> tuple[str, str]:
-    """Sync wrapper — runs the async parallel function."""
-    return await generate_code_parallel(schema, question, columns, history)
-
+    """Wrapper — runs the sequential pipeline function."""
+    return await generate_code_pipeline(schema, question, columns, history)
 
 def generate_code_multi(schemas: str, question: str, columns: list = []) -> tuple[str, str]:
     chart_type = select_chart_type(question, columns) if columns else "none"

@@ -46,7 +46,7 @@ class DatasetMeta(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
-    print("[DB] SQLite initialized ✅")
+    print("[DB] SQLite initialized ")
 
 
 

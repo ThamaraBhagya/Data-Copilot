@@ -1,0 +1,14 @@
+artifact_uri: mlflow-artifacts:/908814462712812959/c46539318a7a45948324f110e9644aef/artifacts
+end_time: 1775986181722
+entry_point_name: ''
+experiment_id: '908814462712812959'
+lifecycle_stage: active
+run_id: c46539318a7a45948324f110e9644aef
+run_name: learned-snipe-220
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1775986180661
+status: 3
+tags: []
+user_id: root
