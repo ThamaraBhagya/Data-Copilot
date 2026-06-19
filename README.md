@@ -1,3 +1,5 @@
+
+
 ﻿# 📊 Data Copilot — LLM-Powered Data Analysis Assistant
 
 > Upload any CSV, ask questions in plain English, and get instant charts, statistics, and AI-generated insights — powered by LLaMA 3 via Groq.
@@ -46,6 +48,9 @@ Instead of writing pandas or SQL queries, users simply type questions like:
 The system uses a **LangChain + Groq (LLaMA 3)** pipeline to generate Python code, executes it inside a **RestrictedPython sandbox** for security, retries automatically on failure, and returns results — charts or tables — directly in the chat UI.
 
 ---
+## Demo
+https://github.com/user-attachments/assets/3a12a083-f722-4da2-8a85-cfe595fba6b9
+
 
 ## Features
 
