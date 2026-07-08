@@ -1,6 +1,5 @@
 
-
-﻿# 📊 Data Copilot — LLM-Powered Data Analysis Assistant
+## 📊 Data Copilot — LLM-Powered Data Analysis Assistant
 
 > Upload any CSV, ask questions in plain English, and get instant charts, statistics, and AI-generated insights — powered by LLaMA 3 via Groq.
 
